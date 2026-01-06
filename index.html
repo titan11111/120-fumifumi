@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple JS Platformer</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #5c94fc; }
+        canvas { display: block; background: #5c94fc; }
+    </style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// 画面サイズ設定
+canvas.width = 800;
+canvas.height = 400;
+
+// ゲームの設定変数
+const gravity = 0.8; // 重力の強さ
+const keys = {};     // 押されているキーの記録
+
+// プレイヤーの設定
+const player = {
+    x: 50,
+    y: 200,
+    width: 30,
+    height: 30,
+    velX: 0,
+    velY: 0,
+    speed: 5,
+    jumpStrength: -15,
+    grounded: false
+};
+
+// ステージ（足場）の設定
+const platforms = [
+    { x: 0, y: 350, width: 300, height: 50 },
+    { x: 400, y: 300, width: 200, height: 20 },
+    { x: 150, y: 200, width: 150, height: 20 },
+    { x: 650, y: 250, width: 150, height: 20 }
+];
+
+// キー入力の監視
+window.addEventListener('keydown', (e) => keys[e.code] = true);
+window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+function update() {
+    // 左右移動
+    if (keys['ArrowRight']) player.velX = player.speed;
+    else if (keys['ArrowLeft']) player.velX = -player.speed;
+    else player.velX = 0;
+
+    // ジャンプ（地面にいる時だけ）
+    if (keys['ArrowUp'] && player.grounded) {
+        player.velY = player.jumpStrength;
+        player.grounded = false;
+    }
+
+    // 重力の適用
+    player.velY += gravity;
+    player.x += player.velX;
+    player.y += player.velY;
+
+    // 当たり判定
+    player.grounded = false;
+    for (let plat of platforms) {
+        if (player.x < plat.x + plat.width &&
+            player.x + player.width > plat.x &&
+            player.y < plat.y + plat.height &&
+            player.y + player.height > plat.y) {
+            
+            // 足場の上に乗る判定
+            if (player.velY > 0) {
+                player.grounded = true;
+                player.velY = 0;
+                player.y = plat.y - player.height;
+            }
+        }
+    }
+
+    // 画面外（落下）判定
+    if (player.y > canvas.height) {
+        player.x = 50;
+        player.y = 200;
+        player.velY = 0;
+    }
+
+    draw();
+    requestAnimationFrame(update);
+}
+
+function draw() {
+    // 画面をクリア
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // プレイヤーの描画（赤色）
+    ctx.fillStyle = 'red';
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // 足場の描画（茶色）
+    ctx.fillStyle = '#8B4513';
+    for (let plat of platforms) {
+        ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+    }
+}
+
+// ゲーム開始
+update();
+</script>
+</body>
+</html>
