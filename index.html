@@ -2,114 +2,125 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Simple JS Platformer</title>
+    <title>勇者の終焉 - The Last Hero (JS Edition)</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #5c94fc; }
-        canvas { display: block; background: #5c94fc; }
+        body {
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            background-color: #000;
+            border: 2px solid #555;
+        }
     </style>
 </head>
 <body>
-<canvas id="gameCanvas"></canvas>
+
+<canvas id="gameCanvas" width="800" height="600"></canvas>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-// 画面サイズ設定
-canvas.width = 800;
-canvas.height = 400;
+    // --- 設定 ---
+    const WHITE = "#FFFFFF";
+    const BLACK = "#000000";
+    const RED = "#C80000";
+    const PURPLE = "#800080";
 
-// ゲームの設定変数
-const gravity = 0.8; // 重力の強さ
-const keys = {};     // 押されているキーの記録
+    class Player {
+        constructor() {
+            this.x = 100;
+            this.y = 100;
+            this.width = 50;
+            this.height = 50;
+            this.color = WHITE;
+            this.corruption = 0;
+            this.speed = 5;
+        }
 
-// プレイヤーの設定
-const player = {
-    x: 50,
-    y: 200,
-    width: 30,
-    height: 30,
-    velX: 0,
-    velY: 0,
-    speed: 5,
-    jumpStrength: -15,
-    grounded: false
-};
+        move(keys) {
+            if (keys["ArrowLeft"]) this.x -= this.speed;
+            if (keys["ArrowRight"]) this.x += this.speed;
+            if (keys["ArrowUp"]) this.y -= this.speed;
+            if (keys["ArrowDown"]) this.y += this.speed;
+        }
 
-// ステージ（足場）の設定
-const platforms = [
-    { x: 0, y: 350, width: 300, height: 50 },
-    { x: 400, y: 300, width: 200, height: 20 },
-    { x: 150, y: 200, width: 150, height: 20 },
-    { x: 650, y: 250, width: 150, height: 20 }
-];
-
-// キー入力の監視
-window.addEventListener('keydown', (e) => keys[e.code] = true);
-window.addEventListener('keyup', (e) => keys[e.code] = false);
-
-function update() {
-    // 左右移動
-    if (keys['ArrowRight']) player.velX = player.speed;
-    else if (keys['ArrowLeft']) player.velX = -player.speed;
-    else player.velX = 0;
-
-    // ジャンプ（地面にいる時だけ）
-    if (keys['ArrowUp'] && player.grounded) {
-        player.velY = player.jumpStrength;
-        player.grounded = false;
-    }
-
-    // 重力の適用
-    player.velY += gravity;
-    player.x += player.velX;
-    player.y += player.velY;
-
-    // 当たり判定
-    player.grounded = false;
-    for (let plat of platforms) {
-        if (player.x < plat.x + plat.width &&
-            player.x + player.width > plat.x &&
-            player.y < plat.y + plat.height &&
-            player.y + player.height > plat.y) {
-            
-            // 足場の上に乗る判定
-            if (player.velY > 0) {
-                player.grounded = true;
-                player.velY = 0;
-                player.y = plat.y - player.height;
+        updateStatus() {
+            if (this.corruption >= 100) {
+                this.corruption = 100;
+                this.color = "#333333"; // 背景と完全同化を避ける暗いグレー
+            } else if (this.corruption > 50) {
+                this.color = PURPLE;
             }
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
         }
     }
 
-    // 画面外（落下）判定
-    if (player.y > canvas.height) {
-        player.x = 50;
-        player.y = 200;
-        player.velY = 0;
+    const player = new Player();
+    let storyStep = 0;
+    const keys = {};
+
+    // キー入力の監視
+    window.addEventListener("keydown", (e) => {
+        keys[e.key] = true;
+        // スペースキーで魔王化
+        if (e.key === " ") {
+            player.corruption += 10;
+            if (storyStep === 0) storyStep = 1;
+        }
+    });
+    window.addEventListener("keyup", (e) => {
+        keys[e.key] = false;
+    });
+
+    function drawText(text, x, y, size, color) {
+        ctx.fillStyle = color;
+        ctx.font = `${size}px "MS Gothic", "Hiragino Sans", sans-serif`;
+        ctx.fillText(text, x, y);
     }
 
-    draw();
-    requestAnimationFrame(update);
-}
+    function gameLoop() {
+        // 1. 画面クリア
+        ctx.fillStyle = BLACK;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-function draw() {
-    // 画面をクリア
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // 2. 更新
+        player.move(keys);
+        player.updateStatus();
 
-    // プレイヤーの描画（赤色）
-    ctx.fillStyle = 'red';
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+        // 3. 描画
+        player.draw();
 
-    // 足場の描画（茶色）
-    ctx.fillStyle = '#8B4513';
-    for (let plat of platforms) {
-        ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+        // UI表示
+        drawText(`魔王化: ${player.corruption}%`, 20, 50, 40, RED);
+
+        // ストーリーテキスト
+        if (storyStep === 0) {
+            drawText("魔王を倒した...だが、何かが体に流れ込んでくる。", 50, 520, 25, WHITE);
+            drawText("[SPACE]キーで前へ進む", 50, 550, 20, WHITE);
+        } else if (player.corruption < 50) {
+            drawText("体は重いが、まだ意識はある。聖域へ向かわねば。", 50, 520, 25, WHITE);
+        } else if (player.corruption < 100) {
+            drawText("かつての仲間たちが、武器を持ってこちらを見ている...", 50, 520, 25, PURPLE);
+        } else {
+            drawText("私は...新しい魔王だ。", 50, 520, 40, RED);
+        }
+
+        requestAnimationFrame(gameLoop);
     }
-}
 
-// ゲーム開始
-update();
+    // ゲーム開始
+    gameLoop();
 </script>
 </body>
 </html>
